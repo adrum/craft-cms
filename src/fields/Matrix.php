@@ -1554,6 +1554,7 @@ JS,
             'map' => $map,
             'criteria' => [
                 'fieldId' => $this->id,
+                'ownerId' => $sourceElementIds,
                 'allowOwnerDrafts' => true,
                 'allowOwnerRevisions' => true,
                 // only include revisions if any of the source elements is a revision
