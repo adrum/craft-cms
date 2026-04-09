@@ -1694,7 +1694,10 @@ class Entry extends Element implements NestedElementInterface, ExpirableElementI
     {
         if (isset($this->fieldId)) {
             /** @var EntryType[] $entryTypes */
-            $entryTypes = $this->getField()->getFieldLayoutProviders();
+            $entryTypes = array_values(array_filter(
+                $this->getField()->getFieldLayoutProviders(),
+                fn($provider) => $provider instanceof EntryType,
+            ));
         } elseif (isset($this->sectionId)) {
             $entryTypes = $this->getSection()->getEntryTypes();
         } else {
@@ -3008,14 +3011,15 @@ JS;
     private function maybeSetDefaultAttributes(): void
     {
         // if we're resaving, we shouldn't be setting the defaults
-        if ($this->resaving) {
+        if ($this->resaving || $this->getIsRevision()) {
             return;
         }
 
+        $section = $this->getSection();
         if (
-            empty($this->getAuthors()) &&
-            !isset($this->fieldId) &&
-            $this->getSection()->type !== Section::TYPE_SINGLE
+            $section?->type !== Section::TYPE_SINGLE &&
+            $section?->maxAuthors !== 0 &&
+            empty($this->getAuthors())
         ) {
             $user = Craft::$app->getUser()->getIdentity();
             if ($user) {
@@ -3027,7 +3031,7 @@ JS;
             !$this->_userPostDate() &&
             (
                 in_array($this->scenario, [self::SCENARIO_LIVE, self::SCENARIO_DEFAULT]) ||
-                (!$this->getIsDraft() && !$this->getIsRevision())
+                !$this->getIsDraft()
             )
         ) {
             // Default the post date to the current date/time

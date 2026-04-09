@@ -34,7 +34,6 @@ use craft\helpers\FileHelper;
 use craft\helpers\Html;
 use craft\helpers\Image;
 use craft\helpers\Json;
-use craft\helpers\Session;
 use craft\helpers\StringHelper;
 use craft\helpers\UrlHelper;
 use craft\helpers\User as UserHelper;
@@ -316,7 +315,9 @@ class UsersController extends Controller
 
         $duration = Craft::$app->getConfig()->getGeneral()->userSessionDuration;
 
+        // PublicKeyCredentialRequestOptions
         $requestOptions = $this->request->getRequiredBodyParam('requestOptions');
+        // PublicKeyCredential
         $response = $this->request->getRequiredBodyParam('response');
         $credential = WebAuthnRecord::findOne(['credentialId' => Json::decode($response)['id']]);
 
@@ -513,8 +514,10 @@ class UsersController extends Controller
         if (!$success) {
             $this->setFailFlash(Craft::t('app', 'There was a problem impersonating this user.'));
             Craft::error(sprintf('%s tried to impersonate userId: %s but something went wrong.',
-                $userSession->getIdentity()->username, $userId), __METHOD__);
-            return null;
+                $userSession->getIdentity()->username ?? 'Unknown user', $userId), __METHOD__);
+            return $this->redirect($this->request->getIsCpRequest()
+                ? Request::CP_PATH_LOGIN
+                : Craft::$app->getConfig()->getGeneral()->getLoginPath() ?? '');
         }
 
         return $this->_handleSuccessfulLogin($user);
@@ -1260,6 +1263,10 @@ class UsersController extends Controller
     public function actionSavePermissions(): Response
     {
         $this->requireCpRequest();
+
+        if (!$this->showPermissionsScreen()) {
+            throw new ForbiddenHttpException('User not authorized to perform this action.');
+        }
 
         $currentUser = static::currentUser();
         $user = $this->editedUser((int)$this->request->getRequiredBodyParam('userId'));
@@ -2784,6 +2791,10 @@ JS);
      */
     private function _saveUserGroups(User $user, User $currentUser): void
     {
+        if (!$currentUser->canAssignUserGroups()) {
+            return;
+        }
+
         $groupIds = $this->request->getBodyParam('groups');
 
         if ($groupIds === null) {

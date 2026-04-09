@@ -980,12 +980,16 @@ JS, [
             $entrySelector = ' > .blocks > .matrixblock';
 
             $items[] = $this->copyAction($type, $entrySelector);
-            $items[] = $this->duplicateAction($type, $entrySelector, <<<JS
+            if (!$this->static) {
+                $items[] = $this->duplicateAction($type, $entrySelector, <<<JS
 field.data('matrix').duplicateSelectedEntries();
-JS);
-            $items[] = $this->deleteAction($type, $entrySelector, <<<JS
+JS
+                );
+                $items[] = $this->deleteAction($type, $entrySelector, <<<JS
 field.data('matrix').deleteSelectedEntries();
-JS);
+JS
+                );
+            }
         }
 
         return $items;
@@ -1003,10 +1007,12 @@ JS);
             $items[] = $this->copyAction($type, $entrySelector);
             $items[] = $this->duplicateAction($type, $entrySelector, <<<JS
 field.children('.nested-element-cards').data('nestedElementManager').duplicateElements(getEntries());
-JS);
+JS
+            );
             $items[] = $this->deleteAction($type, $entrySelector, <<<JS
 field.children('.nested-element-cards').data('nestedElementManager').deleteElements(getEntries());
-JS);
+JS
+            );
         }
 
         return $items;
@@ -1450,13 +1456,12 @@ JS,
             $scenario = $element->getScenario();
 
             foreach ($entries as $entry) {
+                /** @var Entry $entry */
                 $entry->setOwner($element);
 
-                /** @var Entry $entry */
-                if (
-                    $scenario === Element::SCENARIO_ESSENTIALS ||
-                    ($entry->enabled && $scenario === Element::SCENARIO_LIVE)
-                ) {
+                if (!$entry->enabled) {
+                    $entry->setScenario(Element::SCENARIO_ESSENTIALS);
+                } else {
                     $entry->setScenario($scenario);
                 }
 
